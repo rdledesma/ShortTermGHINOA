@@ -72,7 +72,7 @@ def run_prediction():
     timestamp = ds_ref.time.values[-1]
     stamp = str(timestamp).replace(":", "").replace(" ", "_")
 
-    outfile = f"{OUTPUT_DIR}/prediccion_DSSF_{stamp}.nc"
+    outfile = f"prediccion_DSSF_latest.nc"
 
     # Guardar netCDF
     xr.Dataset(
