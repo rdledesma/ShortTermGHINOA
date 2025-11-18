@@ -1,0 +1,9 @@
+numpy
+xarray
+netCDF4
+tensorflow==2.16.1
+fastapi
+uvicorn
+joblib
+apscheduler
+h5netcdf
