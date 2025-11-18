@@ -2,7 +2,7 @@
 import os
 
 # URL base MLST en NetCDF
-BASE_URL = "https://datalsasaf.lsasvcs.ipma.pt/PRODUCTS/MSG/MLST/NETCDF"
+BASE_URL = "https://datalsasaf.lsasvcs.ipma.pt/PRODUCTS/MSG/MDSSFTD/NETCDF"
 
 # Credenciales
 USERNAME = os.getenv("LSA_USER", "rdledesma")

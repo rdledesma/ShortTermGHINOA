@@ -60,29 +60,38 @@ def download_and_crop_file(remote_fname, year, month, day):
 
     url = f"{BASE_URL}/{year}/{month:02d}/{day:02d}/{remote_fname}"
     local_path = os.path.join(DOWNLOAD_DIR, remote_fname)
+    tmp_path = os.path.join(DOWNLOAD_DIR, f"tmp_{remote_fname}")
 
     if not os.path.exists(local_path):
         print("Descargando:", url)
         r = requests.get(url, auth=HTTPBasicAuth(USERNAME, PASSWORD), stream=True)
 
         if r.status_code == 200:
-            with open(local_path, "wb") as f:
+            with open(tmp_path, "wb") as f:
                 for chunk in r.iter_content(8192):
                     f.write(chunk)
         else:
             print("Error al descargar", remote_fname, "Código:", r.status_code)
             return None
+    else:
+        tmp_path = local_path  # si ya existe, trabajar sobre él
 
     # Recortar archivo al dominio requerido
     try:
-        ds = xr.open_dataset(local_path)
-        ds_crop = crop_domain(ds, LAT_MIN, LAT_MAX, LON_MIN, LON_MAX)
-        ds_crop.to_netcdf(local_path, mode="w")
+        with xr.open_dataset(tmp_path) as ds:
+            ds_crop = crop_domain(ds, LAT_MIN, LAT_MAX, LON_MIN, LON_MAX)
+            ds_crop.to_netcdf(local_path, mode="w")  # sobrescribe seguro
         print("Archivo recortado:", remote_fname)
     except Exception as e:
         print("Error recortando archivo:", e)
+        return None
+
+    # Eliminar temporal si existía
+    if tmp_path != local_path and os.path.exists(tmp_path):
+        os.remove(tmp_path)
 
     return local_path
+
 
 
 def download_latest_netcdf(n_last=4):
