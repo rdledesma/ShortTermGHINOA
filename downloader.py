@@ -2,7 +2,7 @@
 import os
 import re
 import requests
-from datetime import datetime, timedelta, UTC
+from datetime import datetime, timedelta, timezone
 from requests.auth import HTTPBasicAuth
 import xarray as xr
 import glob
@@ -38,7 +38,7 @@ def get_latest_available_files():
     """
     Retrocede hora por hora hasta encontrar el día donde existen archivos MLST.
     """
-    now_utc = datetime.now(UTC)
+    now_utc = datetime.now(timezone.utc)
 
     for i in range(12):  # retrocede hasta 12 horas
         ref = now_utc - timedelta(hours=i)
