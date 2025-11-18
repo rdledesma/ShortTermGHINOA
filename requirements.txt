@@ -1,7 +1,7 @@
 numpy
 xarray
 netCDF4
-tensorflow==2.16.1
+tensorflow>=2.20
 fastapi
 uvicorn
 joblib
