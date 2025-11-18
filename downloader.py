@@ -53,45 +53,62 @@ def get_latest_available_files():
     return None, None, None, []
 
 
-def download_and_crop_file(remote_fname, year, month, day):
+def download_and_crop_file(remote_fname, year, month, day, max_retries=3):
     """
-    Descarga un archivo NetCDF y lo recorta al dominio definido.
+    Descarga un archivo NetCDF verificando tamaño y lo recorta al dominio.
+    Reintenta si el archivo descargado es incompleto.
     """
 
     url = f"{BASE_URL}/{year}/{month:02d}/{day:02d}/{remote_fname}"
     local_path = os.path.join(DOWNLOAD_DIR, remote_fname)
     tmp_path = os.path.join(DOWNLOAD_DIR, f"tmp_{remote_fname}")
 
-    if not os.path.exists(local_path):
-        print("Descargando:", url)
+    # --- Paso 1: obtener tamaño real del archivo remoto ---
+    head = requests.head(url, auth=HTTPBasicAuth(USERNAME, PASSWORD))
+    if "Content-Length" in head.headers:
+        remote_size = int(head.headers["Content-Length"])
+    else:
+        print(f"No se pudo verificar tamaño remoto de {remote_fname}")
+        remote_size = None
+
+    for attempt in range(1, max_retries + 1):
+
+        print(f"Descargando ({attempt}/{max_retries}):", url)
+
         r = requests.get(url, auth=HTTPBasicAuth(USERNAME, PASSWORD), stream=True)
 
-        if r.status_code == 200:
-            with open(tmp_path, "wb") as f:
-                for chunk in r.iter_content(8192):
-                    f.write(chunk)
-        else:
-            print("Error al descargar", remote_fname, "Código:", r.status_code)
+        if r.status_code != 200:
+            print("Error HTTP:", r.status_code)
             return None
-    else:
-        tmp_path = local_path  # si ya existe, trabajar sobre él
 
-    # Recortar archivo al dominio requerido
-    try:
-        with xr.open_dataset(tmp_path) as ds:
-            ds_crop = crop_domain(ds, LAT_MIN, LAT_MAX, LON_MIN, LON_MAX)
-            ds_crop.to_netcdf(local_path, mode="w")  # sobrescribe seguro
-        print("Archivo recortado:", remote_fname)
-    except Exception as e:
-        print("Error recortando archivo:", e)
-        return None
+        with open(tmp_path, "wb") as f:
+            for chunk in r.iter_content(8192):
+                f.write(chunk)
 
-    # Eliminar temporal si existía
-    if tmp_path != local_path and os.path.exists(tmp_path):
-        os.remove(tmp_path)
+        # --- Paso 2: validar tamaño ---
+        local_size = os.path.getsize(tmp_path)
 
-    return local_path
+        if remote_size is not None and local_size != remote_size:
+            print(f"Archivo incompleto ({local_size} / {remote_size}). Reintentando...")
+            os.remove(tmp_path)
+            continue
 
+        # --- Paso 3: intentar abrir con xarray ---
+        try:
+            with xr.open_dataset(tmp_path) as ds:
+                ds_crop = crop_domain(ds, LAT_MIN, LAT_MAX, LON_MIN, LON_MAX)
+                ds_crop.to_netcdf(local_path)
+            print("Archivo recortado OK:", remote_fname)
+            os.remove(tmp_path)
+            return local_path
+
+        except Exception as e:
+            print("Error leyendo NetCDF:", e)
+            print("El archivo parece corrupto. Reintentando...")
+            os.remove(tmp_path)
+
+    print(f"FALLÓ LA DESCARGA DE {remote_fname} DESPUÉS DE {max_retries} INTENTOS")
+    return None
 
 
 def download_latest_netcdf(n_last=4):

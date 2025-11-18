@@ -1,7 +1,5 @@
-numpy
 xarray
 netCDF4
-tensorflow>=2.20
 fastapi
 uvicorn
 joblib
@@ -9,4 +7,6 @@ apscheduler
 h5netcdf
 flask
 cartopy
-pandas
+numpy>=1.24,<1.26
+tensorflow>=2.20,<2.25
+pandas>=2.0,<2.2
